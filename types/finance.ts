@@ -39,7 +39,7 @@ export interface Transaction {
   type: 'INCOME' | 'EXPENSE';
   icon: string;
   color: string;
-  created_at: string; // ISO string
+  created_at: string | number; // ISO string or timestamp
   wallet_id?: string;
   category_id?: string;
 }

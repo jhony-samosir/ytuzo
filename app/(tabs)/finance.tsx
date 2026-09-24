@@ -39,10 +39,17 @@ export default function FinanceScreen() {
 
   useEffect(() => {
     if (params.openModal === 'true') {
-      setIsModalVisible(true);
-      router.setParams({ openModal: '' });
+      setTimeout(() => {
+        setIsModalVisible(true);
+        router.setParams({ openModal: '' });
+      }, 0);
     }
   }, [params.openModal]);
+
+  const handleFabPress = () => {
+    setEditingTransaction(null);
+    setIsModalVisible(true);
+  };
 
   // Context-Aware FAB Listener
   useEffect(() => {
@@ -74,10 +81,7 @@ export default function FinanceScreen() {
     updateTransaction
   } = useFinanceData();
 
-  const handleFabPress = () => {
-    setEditingTransaction(null);
-    setIsModalVisible(true);
-  };
+
 
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx);
