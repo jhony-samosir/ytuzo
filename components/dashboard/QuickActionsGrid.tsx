@@ -1,52 +1,66 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableScale } from '../ui/TouchableScale';
-import { Colors } from '../../constants/Colors';
+import { useSQLiteContext } from 'expo-sqlite';
 
-const ACTIONS = [
-  { id: '1', icon: 'wallet', label: 'Transfer', color: Colors.brand.yuzu, bg: 'rgba(250, 204, 21, 0.1)' },
-  { id: '2', icon: 'pie-chart', label: 'Analytics', color: Colors.brand.blaze, bg: 'rgba(249, 115, 22, 0.1)' },
-  { id: '3', icon: 'card', label: 'Cards', color: Colors.brand.ruby, bg: 'rgba(244, 63, 94, 0.1)' },
-  { id: '4', icon: 'grid', label: 'More', color: Colors.text.primary, bg: 'rgba(250, 250, 250, 0.1)' },
-];
+import { Colors } from '../../constants/Colors';
+import { TouchableScale } from '../ui/TouchableScale';
+
+interface QuickAction {
+  id: string;
+  action_id: string;
+  slot_index: number;
+  icon_name: any;
+  icon_color: string;
+  icon_bg: string;
+  label_text: string;
+}
 
 export function QuickActionsGrid() {
+  const db = useSQLiteContext();
+  const [actions, setActions] = useState<QuickAction[]>([]);
+
+  useEffect(() => {
+    async function loadActions() {
+      const result = await db.getAllAsync<QuickAction>('SELECT * FROM quick_actions_config ORDER BY slot_index ASC LIMIT 3');
+      setActions(result);
+    }
+    loadActions();
+  }, [db]);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.actionGrid}>
-        {ACTIONS.map((action) => (
-          <TouchableScale key={action.id} style={styles.actionItem}>
-            <View style={[styles.actionIconBg, { backgroundColor: action.bg }]}>
-              <Ionicons name={action.icon as any} size={28} color={action.color} />
-            </View>
-            <Text style={styles.actionLabel}>{action.label}</Text>
-          </TouchableScale>
-        ))}
-      </View>
+    <View style={styles.gridContainer}>
+      {actions.map((action) => (
+        <TouchableScale key={action.id} style={styles.actionItem} scaleTo={0.92}>
+          <View style={[styles.actionIconBg, { backgroundColor: action.icon_bg }]}>
+            <Ionicons name={action.icon_name} size={28} color={action.icon_color} />
+          </View>
+          <Text style={styles.actionLabel}>{action.label_text}</Text>
+        </TouchableScale>
+      ))}
+
+      {/* The 4th persistent "More" button */}
+      <TouchableScale style={styles.actionItem} scaleTo={0.92}>
+        <View style={[styles.actionIconBg, { backgroundColor: 'rgba(250, 250, 250, 0.1)' }]}>
+          <Ionicons name="grid" size={28} color={Colors.text.primary} />
+        </View>
+        <Text style={styles.actionLabel}>More</Text>
+      </TouchableScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: Colors.text.primary,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  actionGrid: {
+  gridContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 32,
+    gap: 8,
   },
   actionItem: {
-    alignItems: 'center',
-    gap: 10,
     flex: 1,
+    alignItems: 'center',
+    gap: 8,
   },
   actionIconBg: {
     width: 64,

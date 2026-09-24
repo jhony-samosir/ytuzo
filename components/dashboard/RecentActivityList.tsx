@@ -6,32 +6,46 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Colors } from '../../constants/Colors';
 import { TouchableScale } from '../ui/TouchableScale';
 
-interface Transaction {
+interface DailyActivity {
   id: string;
-  title: string;
-  subtitle: string;
-  amount: number;
-  type: string;
+  module_type: 'FINANCE' | 'SPORTS' | 'FUEL';
+  primary_text: string;
+  secondary_text: string;
+  main_value: number;
+  sub_value: string;
   icon: any;
   color: string;
 }
 
 export function RecentActivityList() {
   const db = useSQLiteContext();
-  const [activities, setActivities] = useState<Transaction[]>([]);
+  const [activities, setActivities] = useState<DailyActivity[]>([]);
 
   useEffect(() => {
     async function loadData() {
-      // Fetch data directly from SQLite
-      const result = await db.getAllAsync<Transaction>('SELECT * FROM transactions ORDER BY created_at DESC');
+      // Fetch data directly from SQLite unified view
+      const result = await db.getAllAsync<DailyActivity>('SELECT * FROM daily_activities ORDER BY created_at DESC');
       setActivities(result);
     }
     loadData();
   }, [db]);
 
-  const formatAmount = (amount: number, type: string) => {
-    const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Math.abs(amount));
-    return type === 'INCOME' ? `+${formatted}` : `-${formatted}`;
+  const renderValue = (item: DailyActivity) => {
+    if (item.module_type === 'FINANCE' || item.module_type === 'FUEL') {
+      const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Math.abs(item.main_value));
+      const prefix = item.sub_value === 'INCOME' ? '+' : '-';
+      const color = item.sub_value === 'INCOME' ? Colors.brand.mint : Colors.text.primary;
+      return <Text style={[styles.activityAmount, { color }]}>{prefix}{formatted}</Text>;
+    }
+    if (item.module_type === 'SPORTS') {
+      return (
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[styles.activityAmount, { color: Colors.text.primary }]}>{item.main_value}</Text>
+          <Text style={{ fontSize: 10, color: Colors.brand.yuzu, fontWeight: '700' }}>KCAL</Text>
+        </View>
+      );
+    }
+    return null;
   };
 
   return (
@@ -52,16 +66,11 @@ export function RecentActivityList() {
                   <Ionicons name={item.icon} size={20} color={item.color} />
                 </View>
                 <View>
-                  <Text style={styles.activityTitle}>{item.title}</Text>
-                  <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
+                  <Text style={styles.activityTitle}>{item.primary_text}</Text>
+                  <Text style={styles.activitySubtitle}>{item.secondary_text}</Text>
                 </View>
               </View>
-              <Text style={[
-                styles.activityAmount, 
-                { color: item.type === 'INCOME' ? Colors.brand.mint : Colors.text.primary }
-              ]}>
-                {formatAmount(item.amount, item.type)}
-              </Text>
+              {renderValue(item)}
             </View>
           </TouchableScale>
         ))}

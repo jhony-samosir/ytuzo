@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, Animated, Pressable, Platform } fro
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSQLiteContext } from 'expo-sqlite';
 
 import { Colors } from '../../constants/Colors';
 import { TouchableScale } from '../../components/ui/TouchableScale';
@@ -102,11 +103,33 @@ function SettingGroup({ title, children }: any) {
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const db = useSQLiteContext();
   
-  // States for toggles
+  // States
+  const [profile, setProfile] = useState<any>(null);
   const [faceId, setFaceId] = useState(true);
   const [pushNotif, setPushNotif] = useState(true);
   const [darkTheme, setDarkTheme] = useState(true);
+
+  useEffect(() => {
+    async function loadSettings() {
+      const user = await db.getFirstAsync('SELECT * FROM user_profile LIMIT 1');
+      setProfile(user);
+      
+      const prefs = await db.getFirstAsync<any>('SELECT * FROM app_preferences LIMIT 1');
+      if (prefs) {
+        setFaceId(Boolean(prefs.is_biometric_enabled));
+        setPushNotif(Boolean(prefs.is_push_notif_enabled));
+        setDarkTheme(Boolean(prefs.is_dark_theme));
+      }
+    }
+    loadSettings();
+  }, [db]);
+
+  const togglePref = async (column: string, value: boolean, setter: any) => {
+    setter(value);
+    await db.runAsync(`UPDATE app_preferences SET ${column} = ?`, [value ? 1 : 0]);
+  };
 
   return (
     <View style={styles.container}>
@@ -144,8 +167,8 @@ export default function SettingsScreen() {
                 </LinearGradient>
               </View>
               <View style={styles.idCardInfo}>
-                <Text style={styles.idName}>Jhony Samosir</Text>
-                <Text style={styles.idRole}>Level: Vanguard</Text>
+                <Text style={styles.idName}>{profile ? `${profile.first_name} ${profile.last_name}` : 'Loading...'}</Text>
+                <Text style={styles.idRole}>Level: {profile ? profile.reputation_level : '-'}</Text>
               </View>
               <Ionicons name="qr-code-outline" size={32} color={Colors.brand.yuzu} style={{ opacity: 0.5 }} />
             </View>
@@ -157,14 +180,14 @@ export default function SettingsScreen() {
 
           {/* Settings Groups */}
           <SettingGroup title="Security">
-            <SettingItem icon="shield-checkmark" title="Face ID / Biometrics" type="toggle" value={faceId} onToggle={setFaceId} />
+            <SettingItem icon="shield-checkmark" title="Face ID / Biometrics" type="toggle" value={faceId} onToggle={(v: boolean) => togglePref('is_biometric_enabled', v, setFaceId)} />
             <SettingItem icon="key" title="Change Passcode" />
             <SettingItem icon="lock-closed" title="Two-Factor Authentication" value="Enabled" />
           </SettingGroup>
 
           <SettingGroup title="Preferences">
-            <SettingItem icon="moon" title="Dark Cyber Theme" type="toggle" value={darkTheme} onToggle={setDarkTheme} />
-            <SettingItem icon="notifications-circle" title="Push Notifications" type="toggle" value={pushNotif} onToggle={setPushNotif} />
+            <SettingItem icon="moon" title="Dark Cyber Theme" type="toggle" value={darkTheme} onToggle={(v: boolean) => togglePref('is_dark_theme', v, setDarkTheme)} />
+            <SettingItem icon="notifications-circle" title="Push Notifications" type="toggle" value={pushNotif} onToggle={(v: boolean) => togglePref('is_push_notif_enabled', v, setPushNotif)} />
             <SettingItem icon="language" title="Language" value="English" />
           </SettingGroup>
 

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useSQLiteContext } from 'expo-sqlite';
 
 import { Colors } from '../../constants/Colors';
 import { TouchableScale } from '../../components/ui/TouchableScale';
@@ -14,6 +15,18 @@ const { width } = Dimensions.get('window');
 
 export default function CentralMenuScreen() {
   const insets = useSafeAreaInsets();
+  const db = useSQLiteContext();
+  const [firstName, setFirstName] = useState('User');
+
+  useEffect(() => {
+    async function loadUser() {
+      const user = await db.getFirstAsync<{ first_name: string }>('SELECT first_name FROM user_profile LIMIT 1');
+      if (user) {
+        setFirstName(user.first_name);
+      }
+    }
+    loadUser();
+  }, [db]);
   
   return (
     <View style={styles.container}>
@@ -49,7 +62,7 @@ export default function CentralMenuScreen() {
                 </Text>
               </View>
               <Text style={styles.greetingText}>Welcome back,</Text>
-              <Text style={styles.nameText} numberOfLines={1} adjustsFontSizeToFit>Jhony</Text>
+              <Text style={styles.nameText} numberOfLines={1} adjustsFontSizeToFit>{firstName}</Text>
             </View>
             
             <TouchableScale style={styles.headerActionBtn}>
