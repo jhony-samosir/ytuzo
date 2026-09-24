@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import { Animated, Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -10,7 +10,7 @@ interface TouchableScaleProps extends PressableProps {
 }
 
 export function TouchableScale({ children, style, onPress, scaleTo = 0.95, ...props }: TouchableScaleProps) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const handlePressIn = (e: any) => {
     Animated.spring(scale, {

@@ -6,6 +6,7 @@ import { Text as DefaultText, View as DefaultView } from 'react-native';
 
 import { useColorScheme } from './useColorScheme';
 
+// eslint-disable-next-line import/no-named-as-default
 import Colors from '@/constants/Colors';
 
 type ThemeProps = {

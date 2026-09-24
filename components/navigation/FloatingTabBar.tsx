@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Platform, Modal, TouchableOpacity, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,18 +10,21 @@ import { Colors } from '../../constants/Colors';
 
 export function FloatingTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const [actionMenuVisible, setActionMenuVisible] = useState(false);
 
   return (
-    <View style={[styles.floatingNavContainer, { bottom: insets.bottom > 0 ? insets.bottom : 20 }]}>
+    <>
+      <View style={[styles.floatingNavContainer, { bottom: insets.bottom > 0 ? insets.bottom : 20 }]}>
       <BlurView 
         intensity={Platform.OS === 'ios' ? 40 : 100} 
         tint="dark" 
         style={styles.floatingNavBackground}
       />
       <View style={styles.floatingNavItems}>
-        {/* We map the actual routes so the active state is correct */}
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
+          // Only show Home and Settings in the Bottom Nav Bar
+          if (route.name !== 'index' && route.name !== 'settings') return null;
+
           const isFocused = state.index === index;
 
           const onPress = () => {
@@ -36,7 +39,6 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             }
           };
 
-          // Hardcoded icons for prototype - ideally we use options.tabBarIcon
           const getIcon = () => {
             const color = isFocused ? Colors.brand.yuzu : Colors.text.muted;
             if (route.name === 'index') {
@@ -51,14 +53,30 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
           return (
             <React.Fragment key={route.key}>
               <TouchableScale style={styles.navItem} onPress={onPress}>
-                {getIcon()}
+                <View style={styles.iconWrapper}>
+                  {getIcon()}
+                </View>
                 {isFocused && <View style={styles.navIndicator} />}
               </TouchableScale>
               
-              {/* Insert the FAB perfectly in the middle */}
-              {index === 0 && (
+              {/* Insert the FAB perfectly in the middle (after the Home tab) */}
+              {route.name === 'index' && (
                  <View style={styles.navFabPlaceholder}>
-                   <TouchableScale style={styles.navFab} scaleTo={0.9}>
+                   <TouchableScale 
+                     style={styles.navFab} 
+                     scaleTo={0.9}
+                     onPress={() => {
+                       const focusedRouteName = state.routes[state.index].name;
+                       if (focusedRouteName === 'finance') {
+                         // Let the Finance screen handle it contextually
+                         const { DeviceEventEmitter } = require('react-native');
+                         DeviceEventEmitter.emit('financeGlobalFabPress');
+                       } else {
+                         // Homepage or other tabs -> Show Global Quick Actions
+                         setActionMenuVisible(true);
+                       }
+                     }}
+                   >
                      <LinearGradient
                        colors={[Colors.brand.yuzu, Colors.brand.blaze]}
                        style={styles.navFabGradient}
@@ -71,38 +89,99 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             </React.Fragment>
           );
         })}
-        {/* Mock other tabs for layout since we only have 2 real tabs currently */}
-        <TouchableScale style={styles.navItem}>
-          <SymbolView name={{ ios: 'bell', android: 'notifications', web: 'notifications' }} size={24} tintColor={Colors.text.muted} fallback={<Ionicons name="notifications-outline" size={24} color={Colors.text.muted} />} />
-        </TouchableScale>
-        <TouchableScale style={styles.navItem}>
-          <SymbolView name={{ ios: 'person', android: 'person', web: 'person' }} size={24} tintColor={Colors.text.muted} fallback={<Ionicons name="person-outline" size={24} color={Colors.text.muted} />} />
-        </TouchableScale>
       </View>
-    </View>
+      </View>
+
+      {/* Global Action Menu Modal */}
+      {actionMenuVisible && (
+        <Modal visible={actionMenuVisible} transparent animationType="fade" onRequestClose={() => setActionMenuVisible(false)}>
+          <View style={styles.actionMenuOverlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setActionMenuVisible(false)}>
+              <BlurView intensity={Platform.OS === 'ios' ? 20 : 80} tint="dark" style={StyleSheet.absoluteFill} />
+            </TouchableOpacity>
+            
+            <View style={styles.actionMenuSheet}>
+              <View style={styles.actionMenuHeader}>
+                <Text style={styles.actionMenuTitle}>Create New</Text>
+                <TouchableOpacity onPress={() => setActionMenuVisible(false)} style={styles.actionMenuClose}>
+                  <Ionicons name="close" size={24} color={Colors.text.primary} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.actionMenuGrid}>
+                {/* Finance Action */}
+                <TouchableScale 
+                  style={styles.actionMenuBtn}
+                  onPress={() => {
+                    setActionMenuVisible(false);
+                    const { router } = require('expo-router');
+                    router.push('/finance?openModal=true');
+                  }}
+                >
+                  <View style={[styles.actionMenuIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <Ionicons name="wallet" size={32} color={Colors.brand.mint} />
+                  </View>
+                  <Text style={styles.actionMenuLabel}>Transaction</Text>
+                </TouchableScale>
+                
+                {/* Vehicle Action */}
+                <TouchableScale 
+                  style={styles.actionMenuBtn}
+                  onPress={() => {
+                    setActionMenuVisible(false);
+                    const { router } = require('expo-router');
+                    router.push('/vehicle');
+                  }}
+                >
+                  <View style={[styles.actionMenuIconBg, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                    <Ionicons name="car" size={32} color="#3B82F6" />
+                  </View>
+                  <Text style={styles.actionMenuLabel}>Vehicle Log</Text>
+                </TouchableScale>
+                
+                {/* Sports Action */}
+                <TouchableScale 
+                  style={styles.actionMenuBtn}
+                  onPress={() => {
+                    setActionMenuVisible(false);
+                    const { router } = require('expo-router');
+                    router.push('/sports');
+                  }}
+                >
+                  <View style={[styles.actionMenuIconBg, { backgroundColor: 'rgba(244, 63, 94, 0.15)' }]}>
+                    <Ionicons name="football" size={32} color={Colors.brand.ruby} />
+                  </View>
+                  <Text style={styles.actionMenuLabel}>Sports Match</Text>
+                </TouchableScale>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   floatingNavContainer: {
     position: 'absolute',
-    left: 24,
-    right: 24,
-    height: 72,
+    left: 32, // Narrower for an "Island" look
+    right: 32,
+    height: 68, // Sleeker height
     zIndex: 10,
   },
   floatingNavBackground: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: Platform.OS === 'android' ? Colors.background.navBaseAndroid : Colors.background.navBaseIOS,
-    borderRadius: 36,
+    backgroundColor: 'rgba(18, 18, 20, 0.85)', // Deep dark transparent
+    borderRadius: 34,
     borderWidth: 1,
-    borderColor: Colors.border.lighter,
+    borderColor: 'rgba(255, 255, 255, 0.08)', // Subtle glass edge
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    elevation: 20,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.8,
+    shadowRadius: 32,
+    elevation: 24,
   },
   floatingNavItems: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -117,13 +196,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  iconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   navIndicator: {
     position: 'absolute',
-    bottom: 10,
-    width: 12,
-    height: 3,
-    borderRadius: 1.5,
+    bottom: 12,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.brand.yuzu,
+    shadowColor: Colors.brand.yuzu,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   navFabPlaceholder: {
     flex: 1.2,
@@ -132,20 +223,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navFab: {
-    top: -24,
-    shadowColor: Colors.brand.blaze,
+    top: -20, // Sit slightly higher for a "dock" feel
+    shadowColor: Colors.brand.yuzu,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.5,
     shadowRadius: 16,
     elevation: 16,
   },
   navFabGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: Colors.background.primary,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)', // Glossy inner ring
+  },
+  
+  // Action Menu Styles
+  actionMenuOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  actionMenuSheet: {
+    backgroundColor: Colors.background.secondary,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  actionMenuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  actionMenuTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.text.primary,
+  },
+  actionMenuClose: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 20,
+  },
+  actionMenuGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  actionMenuBtn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  actionMenuIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionMenuLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+    textAlign: 'center',
   }
 });

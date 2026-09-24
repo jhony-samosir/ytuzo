@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSQLiteContext } from 'expo-sqlite';
+import { router } from 'expo-router';
 
 import { Colors } from '../../constants/Colors';
 import { TouchableScale } from '../ui/TouchableScale';
@@ -31,7 +32,16 @@ export function QuickActionsGrid() {
   return (
     <View style={styles.gridContainer}>
       {actions.map((action) => (
-        <TouchableScale key={action.id} style={styles.actionItem} scaleTo={0.92}>
+        <TouchableScale 
+          key={action.id} 
+          style={styles.actionItem} 
+          scaleTo={0.92}
+          onPress={() => {
+            if (action.action_id === 'ADD_EXPENSE') router.push('/finance');
+            if (action.action_id === 'LOG_RUN') router.push('/sports');
+            if (action.action_id === 'LOG_FUEL') router.push('/vehicle');
+          }}
+        >
           <View style={[styles.actionIconBg, { backgroundColor: action.icon_bg }]}>
             <Ionicons name={action.icon_name} size={28} color={action.icon_color} />
           </View>

@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
-  const DATABASE_VERSION = 3; // Upgraded to v3 for Dynamic Profile & Quick Actions
+  const DATABASE_VERSION = 5; // Upgraded to v5 for Finance Data Relations
   let result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let currentDbVersion = result?.user_version ?? 0;
 
@@ -28,7 +28,9 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
         color TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
-        sync_status INTEGER DEFAULT 0
+        sync_status INTEGER DEFAULT 0,
+        wallet_id TEXT DEFAULT 'w-1',
+        category_id TEXT DEFAULT 'cat-1'
       );
 
       -- 2. Sport Logs
@@ -128,14 +130,62 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
         icon_bg TEXT NOT NULL,
         label_text TEXT NOT NULL
       );
+
+      -- 8. Wallets
+      CREATE TABLE IF NOT EXISTS wallets (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        balance REAL NOT NULL,
+        color_theme TEXT NOT NULL
+      );
+
+      -- 9. Categories
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        color TEXT NOT NULL
+      );
+
+      -- 10. Budgets
+      CREATE TABLE IF NOT EXISTS budgets (
+        id TEXT PRIMARY KEY NOT NULL,
+        category_id TEXT NOT NULL,
+        monthly_limit REAL NOT NULL
+      );
+
+      -- 11. Subscriptions
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        billing_cycle TEXT NOT NULL,
+        next_billing_date INTEGER NOT NULL,
+        icon TEXT NOT NULL,
+        color TEXT NOT NULL
+      );
     `);
+
+    // Migration logic for v5 (Add missing columns to finance_logs safely)
+    if (currentDbVersion < 5 && currentDbVersion >= 4) {
+      try {
+        await db.execAsync(`
+          ALTER TABLE finance_logs ADD COLUMN wallet_id TEXT DEFAULT 'w-1';
+          ALTER TABLE finance_logs ADD COLUMN category_id TEXT DEFAULT 'cat-1';
+        `);
+      } catch (e) {
+        // Columns might already exist if dev did weird things
+        console.warn('Columns wallet_id or category_id already exist');
+      }
+    }
     
     // Seed dummy data for all pillars and profile
     const now = Date.now();
     await db.execAsync(`
-      INSERT OR REPLACE INTO finance_logs (id, title, subtitle, amount, type, icon, color, created_at, updated_at, sync_status) VALUES
-      ('fin-1', 'Salary', 'Income', 3200.00, 'INCOME', 'briefcase', '#10B981', ${now-5000}, ${now-5000}, 0),
-      ('fin-2', 'Coffee Shop', 'Food & Beverage', 4.50, 'EXPENSE', 'cafe', '#FACC15', ${now-1000}, ${now-1000}, 0);
+      INSERT OR REPLACE INTO finance_logs (id, title, subtitle, amount, type, icon, color, created_at, updated_at, sync_status, wallet_id, category_id) VALUES
+      ('fin-1', 'Salary', 'Income', 3200.00, 'INCOME', 'briefcase', '#10B981', ${now-5000}, ${now-5000}, 0, 'w-1', 'cat-1'),
+      ('fin-2', 'Coffee Shop', 'Food & Beverage', 4.50, 'EXPENSE', 'cafe', '#FACC15', ${now-1000}, ${now-1000}, 0, 'w-2', 'cat-1');
       
       INSERT OR REPLACE INTO sport_logs (id, sport_type, distance_km, duration_mins, calories, created_at, updated_at, sync_status) VALUES
       ('spt-1', 'Morning Run', 5.2, 32, 410, ${now-4000}, ${now-4000}, 0);
@@ -153,6 +203,25 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
       ('qa-1', 'ADD_EXPENSE', 1, 'wallet', '#FACC15', 'rgba(250, 204, 21, 0.1)', 'Finance'),
       ('qa-2', 'LOG_RUN', 2, 'bicycle', '#38BDF8', 'rgba(56, 189, 248, 0.1)', 'Sports'),
       ('qa-3', 'LOG_FUEL', 3, 'car', '#F43F5E', 'rgba(244, 63, 94, 0.1)', 'Vehicle');
+      
+      INSERT OR REPLACE INTO wallets (id, name, type, balance, color_theme) VALUES
+      ('w-1', 'Bank BCA', 'BANK', 12450.00, '#0284C7'),
+      ('w-2', 'GoPay', 'EWALLET', 320.50, '#10B981'),
+      ('w-3', 'Cash', 'CASH', 50.00, '#FACC15');
+
+      INSERT OR REPLACE INTO categories (id, name, icon, color) VALUES
+      ('cat-1', 'Food & Beverage', 'fast-food', '#FACC15'),
+      ('cat-2', 'Transport', 'bus', '#38BDF8'),
+      ('cat-3', 'Entertainment', 'game-controller', '#F43F5E');
+
+      INSERT OR REPLACE INTO budgets (id, category_id, monthly_limit) VALUES
+      ('b-1', 'cat-1', 400.00),
+      ('b-2', 'cat-2', 150.00),
+      ('b-3', 'cat-3', 100.00);
+
+      INSERT OR REPLACE INTO subscriptions (id, name, amount, billing_cycle, next_billing_date, icon, color) VALUES
+      ('sub-1', 'Netflix', 15.99, 'MONTHLY', ${now + 86400000 * 5}, 'tv', '#E50914'),
+      ('sub-2', 'Spotify', 9.99, 'MONTHLY', ${now + 86400000 * 12}, 'musical-notes', '#1DB954');
     `);
     
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

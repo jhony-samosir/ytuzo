@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Animated, Pressable, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { TouchableScale } from '../../components/ui/TouchableScale';
 
 // Custom Neon Switch Component built just for YTuzo
 function NeonSwitch({ value, onValueChange }: { value: boolean, onValueChange: (v: boolean) => void }) {
-  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const [anim] = useState(() => new Animated.Value(value ? 1 : 0));
 
   useEffect(() => {
     Animated.spring(anim, {
@@ -18,7 +18,7 @@ function NeonSwitch({ value, onValueChange }: { value: boolean, onValueChange: (
       useNativeDriver: false,
       speed: 20,
     }).start();
-  }, [value]);
+  }, [value, anim]);
 
   const backgroundColor = anim.interpolate({
     inputRange: [0, 1],
