@@ -4,7 +4,7 @@
     "slug": "YTuzo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon_v2.png",
     "scheme": "ytuzo",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -12,25 +12,25 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#09090B",
-        "foregroundImage": "./assets/images/icon.png",
-        "monochromeImage": "./assets/images/icon.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/images/icon_v2.png",
+        "monochromeImage": "./assets/images/icon_v2.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon_v2.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#09090B"
+          "image": "./assets/images/splash_v2.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#000000"
         }
       ],
       "expo-sqlite"

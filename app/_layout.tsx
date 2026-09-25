@@ -1,59 +1,150 @@
+"use no memo";
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-import { useColorScheme } from '@/components/useColorScheme';
+import * as Haptics from 'expo-haptics';
+import { useEffect, useState, useCallback } from 'react';
+import Animated, { FadeOut, FadeIn, FadeInDown, Easing, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { View, StyleSheet, StatusBar } from 'react-native';
 import { SQLiteProvider } from 'expo-sqlite';
 import { migrateDbIfNeeded } from '../database/db';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: '(tabs)',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  const [dbReady, setDbReady] = useState(false);
+  const [splashAnimationComplete, setSplashAnimationComplete] = useState(false);
+  
+  // Cinematic continuous zoom state for premium feel
+  const scale = useSharedValue(0.95);
+
+  const cinematicZoom = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
+  // Handle errors
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+  // Handle DB Initialization
+  const onDbInit = useCallback(async (db: any) => {
+    try {
+      await migrateDbIfNeeded(db);
+      setDbReady(true);
+    } catch (e) {
+      console.error('DB Migration failed:', e);
+      setDbReady(true); // Proceed anyway to avoid locking the user out
     }
-  }, [loaded]);
+  }, []);
+
+  const isAppReady = loaded && dbReady;
+
+  useEffect(() => {
+    if (isAppReady) {
+      // Hide the native splash screen smoothly
+      SplashScreen.hideAsync().catch(() => {});
+      
+      // Start the ultra-slow cinematic zoom
+      // eslint-disable-next-line react-hooks/immutability
+      scale.value = withTiming(1.02, { duration: 4000, easing: Easing.out(Easing.cubic) });
+      
+      // Hold the custom JS splash screen for 3 seconds for the cinematic effect
+      setTimeout(() => {
+        setSplashAnimationComplete(true);
+      }, 3000);
+
+      // Add Premium Haptics that trigger exactly when the text elements fade in
+      setTimeout(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }, 800); // Triggers with "YTUZO"
+      
+      setTimeout(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }, 1500); // Triggers with "Wealth & Lifestyle"
+    }
+  }, [isAppReady, scale]);
 
   if (!loaded) {
     return null;
   }
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <SQLiteProvider databaseName="ytuzo.db" onInit={migrateDbIfNeeded}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-      </SQLiteProvider>
-    </ThemeProvider>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      
+      <ThemeProvider value={DarkTheme}>
+        <SQLiteProvider databaseName="ytuzo.db" onInit={onDbInit}>
+          <View style={{ flex: 1 }}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            </Stack>
+          </View>
+        </SQLiteProvider>
+      </ThemeProvider>
+      
+      {/* Premium Cinematic Splash Screen Overlay */}
+      {!splashAnimationComplete && (
+        <Animated.View 
+          pointerEvents="none"
+          exiting={FadeOut.duration(1500).easing(Easing.inOut(Easing.ease))} 
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}
+        >
+          <Animated.View style={[{ alignItems: 'center' }, cinematicZoom]}>
+            {/* Aesthetic Luxury Logo Animation */}
+            <Animated.Image 
+              entering={FadeInDown.duration(1200).delay(300).easing(Easing.out(Easing.exp))} 
+              source={require('../assets/images/splash_v2.png')} 
+              style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 24 }} 
+            />
+            
+            {/* Brand Name */}
+            <Animated.Text 
+              entering={FadeIn.duration(1500).delay(800).easing(Easing.out(Easing.ease))}
+              style={{ 
+                color: '#FFFFFF', 
+                fontSize: 24,
+                fontFamily: 'SpaceMono',
+                letterSpacing: 14, 
+                textTransform: 'uppercase',
+                marginLeft: 14, // offset letterSpacing for perfect centering
+              }}
+            >
+              YTUZO
+            </Animated.Text>
+
+            {/* Subtitle */}
+            <Animated.Text 
+              entering={FadeIn.duration(1500).delay(1500).easing(Easing.out(Easing.ease))}
+              style={{ 
+                color: '#666666', 
+                fontSize: 10,
+                fontWeight: '500', 
+                letterSpacing: 6, 
+                textTransform: 'uppercase',
+                marginTop: 16,
+                marginLeft: 6,
+              }}
+            >
+              Wealth & Lifestyle
+            </Animated.Text>
+          </Animated.View>
+        </Animated.View>
+      )}
+    </View>
   );
 }

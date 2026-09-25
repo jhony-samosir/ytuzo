@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Platform, Modal, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, Platform, Modal, TouchableOpacity, Text, DeviceEventEmitter } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableScale } from '../ui/TouchableScale';
 import { Colors } from '../../constants/Colors';
+import { router } from 'expo-router';
 
 export function FloatingTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -69,7 +70,6 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                        const focusedRouteName = state.routes[state.index].name;
                        if (focusedRouteName === 'finance') {
                          // Let the Finance screen handle it contextually
-                         const { DeviceEventEmitter } = require('react-native');
                          DeviceEventEmitter.emit('financeGlobalFabPress');
                        } else {
                          // Homepage or other tabs -> Show Global Quick Actions
@@ -114,7 +114,6 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   style={styles.actionMenuBtn}
                   onPress={() => {
                     setActionMenuVisible(false);
-                    const { router } = require('expo-router');
                     router.push('/finance?openModal=true');
                   }}
                 >
@@ -129,7 +128,6 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   style={styles.actionMenuBtn}
                   onPress={() => {
                     setActionMenuVisible(false);
-                    const { router } = require('expo-router');
                     router.push('/vehicle');
                   }}
                 >
@@ -144,7 +142,6 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   style={styles.actionMenuBtn}
                   onPress={() => {
                     setActionMenuVisible(false);
-                    const { router } = require('expo-router');
                     router.push('/sports');
                   }}
                 >

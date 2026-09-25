@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, useWindowDimensions, TouchableOpacity, DeviceEventEmitter, Alert } from 'react-native';
+import { View, Text, ScrollView, useWindowDimensions, DeviceEventEmitter, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
