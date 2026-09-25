@@ -1,10 +1,11 @@
-# ⚡ YTuzo — Your Universal Life OS
+# ⚡ YTuzo
+**Y**our **T**racker, a **U**niversal **Z**en **O**rganizer
 
 <p align="center">
-  <img src="./assets/images/icon.png" width="200" alt="YTuzo Logo" style="border-radius: 40px;" />
+  <img src="./assets/images/icon_v2.png" width="200" alt="YTuzo Logo" style="border-radius: 40px;" />
 </p>
 
-YTuzo is a stunning, high-performance **Universal Life OS** built with React Native and Expo. Originally conceived as a financial tracker, YTuzo has evolved into a comprehensive command center for your daily activities—seamlessly integrating your **Finances, Sports/Fitness, and Vehicle (Fuel) Tracking** into a single, unified "Cyber-Zen" interface.
+**YTuzo** is a stunning, high-performance Universal Life OS built with React Native and Expo. It acts as a comprehensive command center for your daily activities—seamlessly integrating your **Finances, Sports/Fitness, and Vehicle (Fuel) Tracking** into a single, unified "Cyber-Zen" interface that brings peace of mind to your routines.
 
 ## ✨ Core Pillars
 
