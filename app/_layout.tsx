@@ -67,14 +67,18 @@ export default function RootLayout() {
         setSplashAnimationComplete(true);
       }, 3000);
 
-      // Add Premium Haptics that trigger exactly when the text elements fade in
+      // Add Premium Haptics that trigger exactly when the elements fade in
       setTimeout(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      }, 800); // Triggers with "YTUZO"
+      }, 300); // Triggers with "YTUZO"
       
       setTimeout(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      }, 1500); // Triggers with "Wealth & Lifestyle"
+      }, 800); // Triggers with Logo
+      
+      setTimeout(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      }, 1500); // Triggers with Slogan
     }
   }, [isAppReady, scale]);
 
@@ -105,42 +109,44 @@ export default function RootLayout() {
           style={[StyleSheet.absoluteFill, { backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}
         >
           <Animated.View style={[{ alignItems: 'center' }, cinematicZoom]}>
-            {/* Aesthetic Luxury Logo Animation */}
-            <Animated.Image 
-              entering={FadeInDown.duration(1200).delay(300).easing(Easing.out(Easing.exp))} 
-              source={require('../assets/images/splash_v2.png')} 
-              style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 24 }} 
-            />
-            
-            {/* Brand Name */}
+            {/* Brand Name (Executive Layout) */}
             <Animated.Text 
-              entering={FadeIn.duration(1500).delay(800).easing(Easing.out(Easing.ease))}
+              entering={FadeIn.duration(1500).delay(300).easing(Easing.out(Easing.ease))}
               style={{ 
-                color: '#FFFFFF', 
-                fontSize: 24,
-                fontFamily: 'SpaceMono',
-                letterSpacing: 14, 
+                color: '#FFFFFF', // Back to pure white for ultra-high contrast
+                fontSize: 32,
+                fontWeight: '200', // Ultra-Light font gives the executive/bank feel
+                letterSpacing: 22, // Extreme tracking
                 textTransform: 'uppercase',
-                marginLeft: 14, // offset letterSpacing for perfect centering
+                marginLeft: 22, // offset letterSpacing
+                marginBottom: 36, // Space before the emblem
               }}
             >
               YTUZO
             </Animated.Text>
 
-            {/* Subtitle */}
+            {/* Aesthetic Luxury Logo Animation (Acts as an emblem) */}
+            <Animated.Image 
+              entering={FadeInDown.duration(1200).delay(800).easing(Easing.out(Easing.exp))} 
+              source={require('../assets/images/splash_v2.png')} 
+              style={{ width: 75, height: 75, resizeMode: 'contain', marginBottom: 32 }} 
+            />
+
+            {/* Subtitle / Slogan */}
             <Animated.Text 
               entering={FadeIn.duration(1500).delay(1500).easing(Easing.out(Easing.ease))}
               style={{ 
-                color: '#666666', 
-                fontSize: 10,
-                fontWeight: '500', 
+                color: '#8A8A93', 
+                fontSize: 8,
+                fontWeight: '400', 
                 letterSpacing: 6, 
+                lineHeight: 18, 
                 textTransform: 'uppercase',
-                marginTop: 16,
                 marginLeft: 6,
+                textAlign: 'center',
               }}
             >
-              Wealth & Lifestyle
+              Your Tracker{'\n'}a Universal Zen Organizer
             </Animated.Text>
           </Animated.View>
         </Animated.View>
