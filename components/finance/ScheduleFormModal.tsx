@@ -2,33 +2,37 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
-import { Transaction, Wallet, Category } from '../../types/finance';
+import { Subscription, Wallet } from '../../types/finance';
+import { ConfirmModal } from './ConfirmModal';
 
-interface TransactionModalProps {
+interface ScheduleFormModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (data: Partial<Transaction>) => void;
-  initialData?: Transaction | null;
+  onSave: (data: Partial<Subscription>) => void;
+  onDelete?: (id: string) => void;
+  initialData?: Subscription | null;
   wallets?: Wallet[];
-  categories?: Category[];
 }
 
-export const TransactionModal: React.FC<TransactionModalProps> = ({ visible, onClose, onSave, initialData, wallets = [], categories = [] }) => {
-  const [title, setTitle] = useState(initialData ? initialData.title : '');
+export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({ visible, onClose, onSave, onDelete, initialData, wallets = [] }) => {
+  const [name, setName] = useState(initialData ? initialData.name : '');
   const [amount, setAmount] = useState(initialData ? initialData.amount.toString() : '');
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>(initialData ? initialData.type : 'EXPENSE');
+  const [billingCycle, setBillingCycle] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>(initialData ? initialData.billing_cycle : 'MONTHLY');
   const [selectedWalletId, setSelectedWalletId] = useState(initialData?.wallet_id || (wallets.length > 0 ? wallets[0].id : 'w-1'));
-  const [selectedCategoryId, setSelectedCategoryId] = useState(initialData?.category_id || (categories.length > 0 ? categories[0].id : 'cat-1'));
-  const [selectedDate, setSelectedDate] = useState<Date>(initialData ? new Date(initialData.created_at) : new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(initialData ? new Date(initialData.next_billing_date) : new Date());
+  
+  const [errorMsg, setErrorMsg] = useState('');
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date(selectedDate));
   const [calendarMode, setCalendarMode] = useState<'DATE' | 'MONTH'>('DATE');
-  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSave = () => {
     setErrorMsg('');
-    if (!title.trim() || !amount.trim()) {
-      setErrorMsg('Please enter a valid title and amount.');
+    if (!name.trim() || !amount.trim()) {
+      setErrorMsg('Please enter a valid name and amount.');
       return;
     }
 
@@ -38,19 +42,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ visible, onC
       return;
     }
 
-    // Find selected category for icon/color mapping
-    const category = categories.find(c => c.id === selectedCategoryId);
-
     onSave({
-      title: title.trim(),
-      subtitle: category ? category.name : (type === 'INCOME' ? 'Income' : 'Expense'),
+      name: name.trim(),
       amount: parsedAmount,
       type: type,
-      icon: category ? category.icon : (type === 'INCOME' ? 'arrow-down' : 'arrow-up'),
-      color: category ? category.color : (type === 'INCOME' ? '#10B981' : '#F43F5E'),
+      billing_cycle: billingCycle,
+      next_billing_date: selectedDate.getTime(),
+      icon: initialData?.icon || (type === 'INCOME' ? 'briefcase' : 'calendar'),
+      color: initialData?.color || (type === 'INCOME' ? '#10B981' : '#F43F5E'),
       wallet_id: selectedWalletId,
-      category_id: selectedCategoryId,
-      created_at: selectedDate.getTime()
     });
     onClose();
   };
@@ -150,7 +150,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ visible, onC
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{initialData ? 'Edit Transaction' : 'New Transaction'}</Text>
+            <Text style={styles.headerTitle}>{initialData ? 'Edit Schedule' : 'New Schedule'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text.primary} />
             </TouchableOpacity>
@@ -188,24 +188,34 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ visible, onC
               ))}
             </ScrollView>
 
-            {/* Category Picker */}
-            <Text style={styles.label}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll} contentContainerStyle={styles.pickerContent}>
-              {categories.map(c => (
-                <TouchableOpacity 
-                  key={c.id} 
-                  style={[styles.pickerItem, selectedCategoryId === c.id && { borderColor: c.color, backgroundColor: c.color + '20' }]}
-                  onPress={() => setSelectedCategoryId(c.id)}
-                >
-                  <Ionicons name={c.icon as any} size={20} color={selectedCategoryId === c.id ? c.color : Colors.text.muted} />
-                  <Text style={[styles.pickerText, selectedCategoryId === c.id && { color: c.color, fontWeight: '700' }]}>{c.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {/* Form Inputs */}
+            <View style={styles.inputRow}>
+              <View style={[styles.inputGroup, { flex: 2, marginRight: 12 }]}>
+                <Text style={styles.label}>Amount</Text>
+                <TextInput 
+                  style={styles.input}
+                  placeholder="0"
+                  placeholderTextColor={Colors.text.muted}
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 3 }]}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput 
+                  style={styles.input}
+                  placeholder="e.g. Salary, Rent"
+                  placeholderTextColor={Colors.text.muted}
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
+            </View>
 
             {/* Date Pill */}
             <View style={styles.dateRow}>
-              <Text style={styles.label}>Date</Text>
+              <Text style={styles.label}>Start / Next Date</Text>
               <TouchableOpacity 
                 style={styles.datePill}
                 onPress={() => setShowCalendar(!showCalendar)}
@@ -223,30 +233,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ visible, onC
             {/* Collapsible Calendar */}
             {showCalendar && renderCalendar()}
 
-            {/* Form Inputs */}
-            <View style={styles.inputRow}>
-              <View style={[styles.inputGroup, { flex: 2, marginRight: 12 }]}>
-                <Text style={styles.label}>Amount</Text>
-                <TextInput 
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor={Colors.text.muted}
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 3 }]}>
-                <Text style={styles.label}>Title</Text>
-                <TextInput 
-                  style={styles.input}
-                  placeholder="e.g. Coffee"
-                  placeholderTextColor={Colors.text.muted}
-                  value={title}
-                  onChangeText={setTitle}
-                />
-              </View>
-            </View>
+            {/* Billing Cycle Picker */}
+            <Text style={styles.label}>Repeats Every</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll} contentContainerStyle={styles.pickerContent}>
+              {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map(cycle => (
+                <TouchableOpacity 
+                  key={cycle} 
+                  style={[styles.pickerItem, billingCycle === cycle && { borderColor: Colors.brand.yuzu, backgroundColor: Colors.brand.yuzu + '20' }]}
+                  onPress={() => setBillingCycle(cycle)}
+                >
+                  <Text style={[styles.pickerText, billingCycle === cycle && { color: Colors.brand.yuzu, fontWeight: '700' }]}>
+                    {cycle.charAt(0) + cycle.slice(1).toLowerCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             {/* Error Message */}
             {errorMsg ? (
@@ -258,11 +259,39 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ visible, onC
 
             {/* Save Button */}
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>{initialData ? 'Update Transaction' : 'Add Transaction'}</Text>
+              <Text style={styles.saveBtnText}>{initialData ? 'Update Schedule' : 'Create Schedule'}</Text>
             </TouchableOpacity>
+
+            {/* Delete Button (Only in Edit Mode) */}
+            {initialData && onDelete && (
+              <TouchableOpacity 
+                style={styles.deleteBtn} 
+                onPress={() => setDeleteConfirmVisible(true)}
+              >
+                <Ionicons name="trash-outline" size={18} color={Colors.brand.ruby} />
+                <Text style={styles.deleteBtnText}>Delete Schedule</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Delete Confirmation Modal */}
+      {initialData && onDelete && (
+        <ConfirmModal 
+          visible={deleteConfirmVisible}
+          title="Delete Schedule"
+          description="Are you sure you want to stop this recurring schedule? This action cannot be undone."
+          confirmText="Delete"
+          onConfirm={() => {
+            setDeleteConfirmVisible(false);
+            onDelete(initialData.id);
+            onClose();
+          }}
+          onCancel={() => setDeleteConfirmVisible(false)}
+          type="danger"
+        />
+      )}
     </Modal>
   );
 };
@@ -338,13 +367,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     borderRadius: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     marginRight: 12,
   },
   pickerText: {
     color: Colors.text.secondary,
-    marginLeft: 8,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -380,6 +408,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
   },
+  deleteBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 16,
+  },
+  deleteBtnText: {
+    color: Colors.brand.ruby,
+    fontWeight: '600',
+    fontSize: 15,
+    marginLeft: 8,
+  },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,7 +435,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
   },
-  /* Date Pill & Calendar Styles */
   dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -454,7 +494,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   calDay: {
-    width: '14.28%', // 100 / 7
+    width: '14.28%',
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
