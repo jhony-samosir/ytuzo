@@ -10,7 +10,7 @@ import { Colors } from '../../constants/Colors';
 import { TouchableScale } from '../../components/ui/TouchableScale';
 import { financeStyles as styles } from '../../components/finance/financeStyles';
 import { useFinanceData } from '../../hooks/useFinanceData';
-import { Transaction } from '../../types/finance';
+import { Transaction, Subscription } from '../../types/finance';
 
 // Subcomponents
 import { OverviewTab } from '../../components/finance/OverviewTab';
@@ -18,9 +18,11 @@ import { TransactionsTab } from '../../components/finance/TransactionsTab';
 import { BudgetsTab } from '../../components/finance/BudgetsTab';
 import { AccountsTab } from '../../components/finance/AccountsTab';
 import { TransactionModal } from '../../components/finance/TransactionModal';
+import { ScheduledTab } from '../../components/finance/ScheduledTab';
+import { ScheduleFormModal } from '../../components/finance/ScheduleFormModal';
 
-type TabType = 'OVERVIEW' | 'TRANSACTIONS' | 'BUDGETS' | 'ACCOUNTS';
-const TABS: TabType[] = ['OVERVIEW', 'TRANSACTIONS', 'BUDGETS', 'ACCOUNTS'];
+type TabType = 'OVERVIEW' | 'TRANSACTIONS' | 'SCHEDULED' | 'BUDGETS' | 'ACCOUNTS';
+const TABS: TabType[] = ['OVERVIEW', 'TRANSACTIONS', 'SCHEDULED', 'BUDGETS', 'ACCOUNTS'];
 
 export default function FinanceScreen() {
   const insets = useSafeAreaInsets();
@@ -34,6 +36,9 @@ export default function FinanceScreen() {
   // Modal State
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  
+  const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Subscription | null>(null);
 
   const params = useLocalSearchParams();
 
@@ -53,9 +58,12 @@ export default function FinanceScreen() {
 
   // Context-Aware FAB Listener
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('financeGlobalFabPress', () => {
+      const subscriptionEvent = DeviceEventEmitter.addListener('financeGlobalFabPress', () => {
       if (activeTab === 'TRANSACTIONS') {
         handleFabPress(); // Opens New Transaction
+      } else if (activeTab === 'SCHEDULED') {
+        setEditingSchedule(null);
+        setIsScheduleModalVisible(true);
       } else if (activeTab === 'BUDGETS') {
         Alert.alert('New Budget', 'Form to add a new Budget will open here!');
       } else if (activeTab === 'ACCOUNTS') {
@@ -66,7 +74,7 @@ export default function FinanceScreen() {
       }
     });
 
-    return () => subscription.remove();
+    return () => subscriptionEvent.remove();
   }, [activeTab]);
 
   const { 
@@ -78,7 +86,11 @@ export default function FinanceScreen() {
     totalBalance,
     deleteTransaction,
     addTransaction,
-    updateTransaction
+    updateTransaction,
+    fetchFilteredTransactions,
+    deleteSubscription,
+    addSubscription,
+    updateSubscription
   } = useFinanceData();
 
 
@@ -93,6 +105,14 @@ export default function FinanceScreen() {
       updateTransaction(editingTransaction.id, data);
     } else {
       addTransaction(data as Omit<Transaction, 'id' | 'created_at'>);
+    }
+  };
+
+  const handleSaveSchedule = (data: Partial<Subscription>) => {
+    if (editingSchedule) {
+      updateSubscription(editingSchedule.id, data);
+    } else {
+      addSubscription(data as Omit<Subscription, 'id'>);
     }
   };
 
@@ -205,6 +225,7 @@ export default function FinanceScreen() {
                 subscriptions={subscriptions}
                 showChart={showChart}
                 onSeeAllTransactions={() => handleTabPress('TRANSACTIONS', 1)}
+                onManageSubscriptions={() => handleTabPress('SCHEDULED', 2)}
               />
             </ScrollView>
           </View>
@@ -212,9 +233,25 @@ export default function FinanceScreen() {
           {/* TRANSACTIONS */}
           <View style={{ width }}>
             <TransactionsTab 
-              transactions={transactions} 
+              globalTransactions={transactions} 
+              fetchFilteredTransactions={fetchFilteredTransactions}
               onDeleteTransaction={deleteTransaction} 
               onEditTransaction={handleEditTransaction}
+            />
+          </View>
+
+          {/* SCHEDULED */}
+          <View style={{ width }}>
+            <ScheduledTab 
+              subscriptions={subscriptions} 
+              onAdd={() => {
+                setEditingSchedule(null);
+                setIsScheduleModalVisible(true);
+              }}
+              onEdit={(sub) => {
+                setEditingSchedule(sub);
+                setIsScheduleModalVisible(true);
+              }}
             />
           </View>
           
@@ -241,6 +278,18 @@ export default function FinanceScreen() {
             onSave={handleSaveTransaction}
             initialData={editingTransaction}
             categories={categories}
+            wallets={wallets}
+          />
+        )}
+
+        {/* Schedule Form Modal */}
+        {isScheduleModalVisible && (
+          <ScheduleFormModal 
+            visible={isScheduleModalVisible}
+            onClose={() => setIsScheduleModalVisible(false)}
+            onSave={handleSaveSchedule}
+            onDelete={deleteSubscription}
+            initialData={editingSchedule}
             wallets={wallets}
           />
         )}

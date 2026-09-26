@@ -16,6 +16,7 @@ interface OverviewTabProps {
   subscriptions: Subscription[];
   showChart: boolean;
   onSeeAllTransactions: () => void;
+  onManageSubscriptions: () => void;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ 
@@ -23,7 +24,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   transactions, 
   subscriptions, 
   showChart, 
-  onSeeAllTransactions 
+  onSeeAllTransactions,
+  onManageSubscriptions 
 }) => {
   const { width } = useWindowDimensions();
   
@@ -146,13 +148,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
       {/* Upcoming Subscriptions Preview */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Upcoming Bills</Text>
-        <TouchableOpacity>
+        <Text style={styles.sectionTitle}>Scheduled & Recurring</Text>
+        <TouchableOpacity onPress={onManageSubscriptions}>
           <Text style={styles.seeAllText}>Manage</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.subList}>
-        {subscriptions.map(s => {
+        {subscriptions.slice(0, 3).map(s => {
           const date = new Date(s.next_billing_date);
           const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           return (
@@ -163,10 +165,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 </View>
                 <View>
                   <Text style={styles.subName}>{s.name}</Text>
-                  <Text style={styles.subDate}>Due {dateStr}</Text>
+                  <Text style={styles.subDate}>Next: {dateStr}</Text>
                 </View>
               </View>
-              <Text style={styles.subAmount}>{formatMoney(s.amount)}</Text>
+              <Text style={[styles.subAmount, { color: s.type === 'INCOME' ? '#10B981' : Colors.text.primary }]}>
+                {s.type === 'INCOME' ? '+' : '-'}{formatMoney(s.amount)}
+              </Text>
             </View>
           );
         })}
