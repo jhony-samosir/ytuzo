@@ -26,9 +26,12 @@ export interface Subscription {
   id: string;
   name: string;
   amount: number;
-  next_billing_date: string; // ISO string
+  type: 'INCOME' | 'EXPENSE';
+  billing_cycle: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+  next_billing_date: number; // timestamp
   icon: string;
   color: string;
+  wallet_id?: string;
 }
 
 export interface Transaction {

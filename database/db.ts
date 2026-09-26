@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
-  const DATABASE_VERSION = 5; // Upgraded to v5 for Finance Data Relations
+  const DATABASE_VERSION = 7; // Upgraded to v7 for wallet_id on subscriptions
   let result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let currentDbVersion = result?.user_version ?? 0;
 
@@ -155,15 +155,17 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
         monthly_limit REAL NOT NULL
       );
 
-      -- 11. Subscriptions
+      -- 11. Subscriptions / Scheduled Transactions
       CREATE TABLE IF NOT EXISTS subscriptions (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        type TEXT NOT NULL DEFAULT 'EXPENSE',
         billing_cycle TEXT NOT NULL,
         next_billing_date INTEGER NOT NULL,
         icon TEXT NOT NULL,
-        color TEXT NOT NULL
+        color TEXT NOT NULL,
+        wallet_id TEXT DEFAULT 'w-1'
       );
     `);
 
@@ -177,6 +179,28 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
       } catch (e) {
         // Columns might already exist if dev did weird things
         console.warn('Columns wallet_id or category_id already exist');
+      }
+    }
+
+    // Migration logic for v6 (Add type column to subscriptions)
+    if (currentDbVersion < 6 && currentDbVersion >= 1) {
+      try {
+        await db.execAsync(`
+          ALTER TABLE subscriptions ADD COLUMN type TEXT NOT NULL DEFAULT 'EXPENSE';
+        `);
+      } catch (e) {
+        console.warn('Column type might already exist on subscriptions');
+      }
+    }
+
+    // Migration logic for v7 (Add wallet_id to subscriptions)
+    if (currentDbVersion < 7 && currentDbVersion >= 1) {
+      try {
+        await db.execAsync(`
+          ALTER TABLE subscriptions ADD COLUMN wallet_id TEXT DEFAULT 'w-1';
+        `);
+      } catch (e) {
+        console.warn('Column wallet_id might already exist on subscriptions');
       }
     }
     
@@ -219,9 +243,10 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
       ('b-2', 'cat-2', 150.00),
       ('b-3', 'cat-3', 100.00);
 
-      INSERT OR REPLACE INTO subscriptions (id, name, amount, billing_cycle, next_billing_date, icon, color) VALUES
-      ('sub-1', 'Netflix', 15.99, 'MONTHLY', ${now + 86400000 * 5}, 'tv', '#E50914'),
-      ('sub-2', 'Spotify', 9.99, 'MONTHLY', ${now + 86400000 * 12}, 'musical-notes', '#1DB954');
+      INSERT OR REPLACE INTO subscriptions (id, name, amount, type, billing_cycle, next_billing_date, icon, color) VALUES
+      ('sub-1', 'Netflix', 15.99, 'EXPENSE', 'MONTHLY', ${now + 86400000 * 5}, 'tv', '#E50914'),
+      ('sub-2', 'Spotify', 9.99, 'EXPENSE', 'MONTHLY', ${now + 86400000 * 12}, 'musical-notes', '#1DB954'),
+      ('sub-3', 'Salary', 3200.00, 'INCOME', 'MONTHLY', ${now + 86400000 * 15}, 'briefcase', '#10B981');
     `);
     
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

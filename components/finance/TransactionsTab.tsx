@@ -11,14 +11,16 @@ import { Transaction } from '../../types/finance';
 import { TouchableScale } from '../../components/ui/TouchableScale';
 
 interface TransactionsTabProps {
-  transactions: Transaction[];
+  globalTransactions: Transaction[];
+  fetchFilteredTransactions: (filters: { type?: string, startDate?: number, endDate?: number, month?: number, year?: number }) => Promise<Transaction[]>;
   onDeleteTransaction: (id: string) => void;
   onEditTransaction: (tx: Transaction) => void;
 }
 
 type FilterType = 'ALL' | 'INCOME' | 'EXPENSE';
 
-export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, onDeleteTransaction, onEditTransaction }) => {
+export const TransactionsTab: React.FC<TransactionsTabProps> = ({ globalTransactions, fetchFilteredTransactions, onDeleteTransaction, onEditTransaction }) => {
+  const [localTransactions, setLocalTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<FilterType>('ALL');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
@@ -45,33 +47,28 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, 
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const filteredTransactions = useMemo(() => {
-    let result = transactions.filter(t => {
-      const date = new Date(t.created_at);
-      
+  React.useEffect(() => {
+    let active = true;
+    const fetch = async () => {
+      const filters: any = { type: filter };
       if (startDate && endDate) {
-        const dTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-        const sTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
-        const eTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
-        
-        const minTime = Math.min(sTime, eTime);
-        const maxTime = Math.max(sTime, eTime);
-        
-        return dTime >= minTime && dTime <= maxTime;
+        filters.startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+        // Set end time to the end of the day
+        filters.endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59).getTime();
+      } else {
+        filters.month = currentMonth.getMonth();
+        filters.year = currentMonth.getFullYear();
       }
-      
-      return date.getMonth() === currentMonth.getMonth() && date.getFullYear() === currentMonth.getFullYear();
-    });
-
-    if (filter !== 'ALL') {
-      result = result.filter(t => t.type === filter);
-    }
-    return result;
-  }, [transactions, filter, currentMonth, startDate, endDate]);
+      const result = await fetchFilteredTransactions(filters);
+      if (active) setLocalTransactions(result);
+    };
+    fetch();
+    return () => { active = false; };
+  }, [filter, currentMonth, startDate, endDate, globalTransactions, fetchFilteredTransactions]);
 
   const flattenedData = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
-    filteredTransactions.forEach(tx => {
+    localTransactions.forEach(tx => {
       const date = new Date(tx.created_at);
       
       const today = new Date();
@@ -99,7 +96,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, 
       });
     });
     return result;
-  }, [filteredTransactions]);
+  }, [localTransactions]);
 
   const handleDeleteClick = (id: string) => {
     setTxToDelete(id);
@@ -276,7 +273,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, 
   const renderItem = ({ item, index }: { item: any, index: number }) => {
     if (item.isHeader) {
       return (
-        <Animated.View entering={FadeInDown.delay(index * 20).springify()} style={localStyles.dateHeaderContainer}>
+        <Animated.View entering={FadeInDown.delay(Math.min(index * 20, 300)).springify()} style={localStyles.dateHeaderContainer}>
           <Text style={localStyles.dateHeader}>{item.title}</Text>
         </Animated.View>
       );
@@ -287,7 +284,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, 
     const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
     return (
-      <Animated.View entering={FadeInDown.delay(index * 20).springify()} layout={Layout.springify()}>
+      <Animated.View entering={FadeInDown.delay(Math.min(index * 20, 300)).springify()}>
         <TouchableOpacity 
           key={tx.id}
           activeOpacity={0.7}
@@ -333,6 +330,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, 
         contentContainerStyle={[styles.tabContent, styles.txListContainer, { paddingBottom: 160 }]}
         showsVerticalScrollIndicator={false}
         initialNumToRender={15}
+        itemLayoutAnimation={Layout.springify()}
       />
 
       {/* Premium Detail Modal */}
@@ -350,7 +348,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions, 
                   </View>
 
                   <View style={localStyles.detailCard}>
-                    <Text style={[localStyles.detailAmount, { color: selectedTx.type === 'INCOME' ? Colors.brand.mint : '#FFF' }]}>
+                    <Text style={[localStyles.detailAmount, { color: selectedTx.type === 'INCOME' ? Colors.brand.mint : Colors.brand.ruby }]}>
                       {selectedTx.type === 'INCOME' ? '+' : '-'}{formatMoney(selectedTx.amount)}
                     </Text>
                     <Text style={localStyles.detailTxTitle}>{selectedTx.title}</Text>
